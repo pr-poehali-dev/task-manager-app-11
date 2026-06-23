@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 
 type Priority = 'low' | 'medium' | 'high';
 type Status = 'todo' | 'inprogress' | 'done';
 type Section = 'tasks' | 'calendar' | 'analytics' | 'archive';
+type ReminderOffset = 'none' | 'at' | '10min' | '30min' | '1hour' | '1day';
 
 interface Task {
   id: number;
@@ -15,6 +16,8 @@ interface Task {
   tags: string[];
   done: boolean;
   archived: boolean;
+  reminderAt?: string; // ISO datetime строка
+  reminderFired?: boolean;
 }
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -34,16 +37,25 @@ const initialTasks: Task[] = [
 ];
 
 const priorityMeta: Record<Priority, { label: string; dot: string; bg: string; border: string; text: string }> = {
-  high:   { label: 'Высокий', dot: 'bg-destructive',  bg: 'bg-destructive/8',  border: 'border-destructive/30',  text: 'text-destructive' },
-  medium: { label: 'Средний', dot: 'bg-amber-500',    bg: 'bg-amber-50',       border: 'border-amber-300',        text: 'text-amber-700' },
-  low:    { label: 'Низкий',  dot: 'bg-emerald-500',  bg: 'bg-emerald-50',     border: 'border-emerald-300',      text: 'text-emerald-700' },
+  high:   { label: 'Высокий', dot: 'bg-destructive', bg: 'bg-destructive/8',  border: 'border-destructive/30', text: 'text-destructive' },
+  medium: { label: 'Средний', dot: 'bg-amber-500',   bg: 'bg-amber-50',       border: 'border-amber-300',      text: 'text-amber-700' },
+  low:    { label: 'Низкий',  dot: 'bg-emerald-500', bg: 'bg-emerald-50',     border: 'border-emerald-300',    text: 'text-emerald-700' },
 };
 
 const statusMeta: Record<Status, { label: string; bg: string; border: string; text: string }> = {
-  todo:       { label: 'К выполнению', bg: 'bg-blue-50',    border: 'border-blue-300',   text: 'text-blue-700' },
-  inprogress: { label: 'В процессе',   bg: 'bg-orange-50',  border: 'border-orange-300', text: 'text-orange-700' },
-  done:       { label: 'Выполнено',    bg: 'bg-emerald-50', border: 'border-emerald-300',text: 'text-emerald-700' },
+  todo:       { label: 'К выполнению', bg: 'bg-blue-50',    border: 'border-blue-300',    text: 'text-blue-700' },
+  inprogress: { label: 'В процессе',   bg: 'bg-orange-50',  border: 'border-orange-300',  text: 'text-orange-700' },
+  done:       { label: 'Выполнено',    bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700' },
 };
+
+const REMINDER_OPTIONS: { value: ReminderOffset; label: string }[] = [
+  { value: 'none',   label: 'Без уведомления' },
+  { value: 'at',     label: 'В момент срока' },
+  { value: '10min',  label: 'За 10 минут' },
+  { value: '30min',  label: 'За 30 минут' },
+  { value: '1hour',  label: 'За 1 час' },
+  { value: '1day',   label: 'За 1 день' },
+];
 
 const navItems: { id: Section; label: string; icon: string }[] = [
   { id: 'tasks',     label: 'Задачи',    icon: 'ListChecks' },
@@ -57,31 +69,84 @@ const PRESET_TAGS = ['#дизайн', '#встреча', '#frontend', '#сроч
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 
+const fmtDateTime = (iso: string) =>
+  new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+const calcReminderAt = (dueDate: string, dueTime: string, offset: ReminderOffset): string | undefined => {
+  if (offset === 'none' || !dueDate) return undefined;
+  const time = dueTime || '09:00';
+  const dueMs = new Date(`${dueDate}T${time}`).getTime();
+  const offsets: Record<ReminderOffset, number> = {
+    none: 0, at: 0, '10min': 10 * 60_000, '30min': 30 * 60_000, '1hour': 60 * 60_000, '1day': 24 * 60 * 60_000,
+  };
+  return new Date(dueMs - offsets[offset]).toISOString();
+};
+
 const emptyForm = () => ({
   title: '',
   note: '',
   priority: 'medium' as Priority,
   status: 'todo' as Status,
   due: '',
+  dueTime: '',
+  reminderOffset: 'none' as ReminderOffset,
   tagInput: '',
   tags: [] as string[],
 });
+
+// Запрашиваем разрешение на уведомления
+const requestNotifPermission = async () => {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+};
 
 export default function Index() {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [section, setSection] = useState<Section>('tasks');
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
+  // Внутриприложенческий тост для уведомлений
+  const [toast, setToast] = useState<{ title: string; id: number } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const active = tasks.filter((t) => !t.archived);
+  const active   = tasks.filter((t) => !t.archived);
   const overdue  = active.filter((t) => !t.done && t.due < todayISO());
   const upcoming = active.filter((t) => !t.done && t.due >= todayISO() && t.due <= addDays(2));
+
+  // Тикер — каждые 30 сек проверяем напоминания
+  useEffect(() => {
+    requestNotifPermission();
+    const tick = () => {
+      const now = Date.now();
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (!t.reminderAt || t.reminderFired || t.done) return t;
+          if (new Date(t.reminderAt).getTime() <= now) {
+            // Браузерное уведомление
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('⏰ Напоминание — Focus', { body: t.title, icon: '/favicon.svg' });
+            }
+            // Внутриприложенческий тост
+            setToast({ title: t.title, id: t.id });
+            if (toastTimer.current) clearTimeout(toastTimer.current);
+            toastTimer.current = setTimeout(() => setToast(null), 6000);
+            return { ...t, reminderFired: true };
+          }
+          return t;
+        })
+      );
+    };
+    tick();
+    const interval = setInterval(tick, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggle  = (id: number) => setTasks((p) => p.map((t) => t.id === id ? { ...t, done: !t.done, status: !t.done ? 'done' : 'todo' } : t));
   const archive = (id: number) => setTasks((p) => p.map((t) => t.id === id ? { ...t, archived: true, done: true } : t));
   const restore = (id: number) => setTasks((p) => p.map((t) => t.id === id ? { ...t, archived: false } : t));
 
-  const openModal = () => { setForm(emptyForm()); setModalOpen(true); };
+  const openModal  = () => { setForm(emptyForm()); setModalOpen(true); };
   const closeModal = () => setModalOpen(false);
 
   const addTagFromInput = () => {
@@ -94,14 +159,12 @@ export default function Index() {
   };
 
   const togglePresetTag = (tag: string) => {
-    setForm((f) => ({
-      ...f,
-      tags: f.tags.includes(tag) ? f.tags.filter((t) => t !== tag) : [...f.tags, tag],
-    }));
+    setForm((f) => ({ ...f, tags: f.tags.includes(tag) ? f.tags.filter((t) => t !== tag) : [...f.tags, tag] }));
   };
 
   const createTask = () => {
     if (!form.title.trim()) return;
+    const reminderAt = calcReminderAt(form.due, form.dueTime, form.reminderOffset);
     setTasks((p) => [
       ...p,
       {
@@ -114,6 +177,8 @@ export default function Index() {
         tags: form.tags,
         done: form.status === 'done',
         archived: false,
+        reminderAt,
+        reminderFired: false,
       },
     ]);
     closeModal();
@@ -217,7 +282,7 @@ export default function Index() {
 
         {section === 'calendar'  && <CalendarView tasks={active} />}
         {section === 'analytics' && <Analytics stats={stats} />}
-        {section === 'archive'   && (
+        {section === 'archive' && (
           <div className="space-y-2 animate-fade-in">
             {tasks.filter((t) => t.archived).length === 0 && (
               <p className="text-center text-muted-foreground py-12 font-hand text-2xl">Архив пуст</p>
@@ -246,13 +311,26 @@ export default function Index() {
         ))}
       </nav>
 
+      {/* In-app toast уведомление */}
+      {toast && (
+        <div className="fixed top-5 right-5 z-[60] flex items-start gap-3 bg-foreground text-background px-5 py-4 rounded-2xl shadow-2xl animate-fade-in max-w-sm">
+          <Icon name="Bell" size={18} className="shrink-0 mt-0.5 text-amber-400" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold opacity-70 mb-0.5">Напоминание</p>
+            <p className="text-sm font-medium line-clamp-2">{toast.title}</p>
+          </div>
+          <button onClick={() => setToast(null)} className="opacity-50 hover:opacity-100 transition shrink-0">
+            <Icon name="X" size={16} />
+          </button>
+        </div>
+      )}
+
       {/* MODAL */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeModal} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-scale-in overflow-hidden">
 
-            {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-border">
               <h2 className="text-lg font-bold">Новая задача</h2>
               <button onClick={closeModal} className="text-muted-foreground hover:text-foreground transition">
@@ -260,7 +338,7 @@ export default function Index() {
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+            <div className="px-6 py-5 space-y-5 max-h-[75vh] overflow-y-auto">
 
               {/* Title */}
               <input
@@ -314,27 +392,69 @@ export default function Index() {
                 </div>
               </div>
 
-              {/* Due */}
+              {/* Срок (дата + время) */}
               <div>
                 <p className="text-xs text-muted-foreground mb-2 font-medium">Срок</p>
-                <input
-                  type="date"
-                  value={form.due}
-                  onChange={(e) => setForm((f) => ({ ...f, due: e.target.value }))}
-                  className="px-4 py-2.5 rounded-xl border border-border text-sm outline-none bg-white w-full"
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    value={form.due}
+                    onChange={(e) => setForm((f) => ({ ...f, due: e.target.value }))}
+                    className="px-4 py-2.5 rounded-xl border border-border text-sm outline-none bg-white"
+                  />
+                  <input
+                    type="time"
+                    value={form.dueTime}
+                    onChange={(e) => setForm((f) => ({ ...f, dueTime: e.target.value }))}
+                    className="px-4 py-2.5 rounded-xl border border-border text-sm outline-none bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Уведомление */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1.5">
+                  <Icon name="Bell" size={13} />
+                  Уведомление
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {REMINDER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, reminderOffset: opt.value }))}
+                      disabled={opt.value !== 'none' && !form.due}
+                      className={`px-3 py-2.5 rounded-xl border text-sm text-left transition ${
+                        form.reminderOffset === opt.value
+                          ? 'border-foreground bg-secondary text-foreground font-medium'
+                          : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 disabled:opacity-40 disabled:cursor-not-allowed'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {form.reminderOffset !== 'none' && form.due && (
+                  <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                    <Icon name="Clock" size={12} />
+                    Уведомление: {fmtDateTime(calcReminderAt(form.due, form.dueTime, form.reminderOffset)!)}
+                  </p>
+                )}
+                {form.reminderOffset !== 'none' && !form.due && (
+                  <p className="mt-2 text-xs text-muted-foreground">Сначала укажите срок задачи</p>
+                )}
               </div>
 
               {/* Tags */}
               <div>
                 <p className="text-xs text-muted-foreground mb-2 font-medium">Теги</p>
-                <div className="flex gap-2 flex-wrap mb-2">
+                <div className="flex gap-2 mb-2">
                   <input
                     value={form.tagInput}
                     onChange={(e) => setForm((f) => ({ ...f, tagInput: e.target.value }))}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTagFromInput(); } }}
                     placeholder="Добавить тег..."
-                    className="px-3 py-1.5 rounded-lg border border-border text-sm outline-none bg-white flex-1 min-w-0"
+                    className="px-3 py-1.5 rounded-lg border border-border text-sm outline-none bg-white flex-1"
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -349,7 +469,8 @@ export default function Index() {
                     </button>
                   ))}
                   {form.tags.filter((t) => !PRESET_TAGS.includes(t)).map((tag) => (
-                    <button key={tag} type="button" onClick={() => setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }))}
+                    <button key={tag} type="button"
+                      onClick={() => setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }))}
                       className="px-3 py-1 rounded-full text-xs font-medium border bg-primary text-primary-foreground border-primary flex items-center gap-1">
                       {tag} <Icon name="X" size={10} />
                     </button>
@@ -358,14 +479,12 @@ export default function Index() {
               </div>
             </div>
 
-            {/* Modal footer */}
             <div className="flex gap-3 px-6 py-4 border-t border-border">
               <button onClick={closeModal}
-                className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-secondary/50 transition">
+                className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-secondary/50 transition">
                 Отмена
               </button>
-              <button onClick={createTask}
-                disabled={!form.title.trim()}
+              <button onClick={createTask} disabled={!form.title.trim()}
                 className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40 transition">
                 Создать
               </button>
@@ -380,7 +499,7 @@ export default function Index() {
 function TaskRow({ task, onToggle, onArchive }: { task: Task; onToggle: (id: number) => void; onArchive: (id: number) => void }) {
   const isOverdue = !task.done && task.due < todayISO();
   return (
-    <div className="group flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-foreground/20 transition animate-scale-in">
+    <div className="group flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-foreground/20 transition">
       <button onClick={() => onToggle(task.id)}
         className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
           task.done ? 'bg-primary border-primary' : 'border-muted-foreground/40 hover:border-foreground'
@@ -390,13 +509,17 @@ function TaskRow({ task, onToggle, onArchive }: { task: Task; onToggle: (id: num
       <span className={`w-2 h-2 rounded-full shrink-0 ${priorityMeta[task.priority].dot}`} />
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium truncate ${task.done ? 'line-through text-muted-foreground' : ''}`}>{task.title}</p>
-        {task.tags.length > 0 && (
-          <div className="flex gap-1 mt-0.5 flex-wrap">
-            {task.tags.map((tag) => (
-              <span key={tag} className="text-[11px] text-muted-foreground">{tag}</span>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          {task.tags.map((tag) => (
+            <span key={tag} className="text-[11px] text-muted-foreground">{tag}</span>
+          ))}
+          {task.reminderAt && !task.done && (
+            <span className={`text-[11px] flex items-center gap-0.5 ${task.reminderFired ? 'text-muted-foreground/50' : 'text-amber-600'}`}>
+              <Icon name="Bell" size={10} />
+              {fmtDateTime(task.reminderAt)}
+            </span>
+          )}
+        </div>
       </div>
       <span className={`text-xs shrink-0 ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
         {fmtDate(task.due)}
@@ -415,10 +538,7 @@ function CalendarView({ tasks }: { tasks: Task[] }) {
   const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-  const tasksOn = (day: number) => {
-    const iso = new Date(year, month, day).toISOString().slice(0, 10);
-    return tasks.filter((t) => t.due === iso);
-  };
+  const tasksOn = (day: number) => tasks.filter((t) => t.due === new Date(year, month, day).toISOString().slice(0, 10));
   return (
     <div className="animate-fade-in">
       <h2 className="text-lg font-semibold mb-4 capitalize">
@@ -430,13 +550,13 @@ function CalendarView({ tasks }: { tasks: Task[] }) {
       <div className="grid grid-cols-7 gap-1.5">
         {cells.map((day, i) => {
           if (!day) return <div key={i} />;
-          const dayTasks = tasksOn(day);
+          const dt = tasksOn(day);
           const isToday = day === now.getDate();
           return (
             <div key={i} className={`aspect-square rounded-xl border p-2 flex flex-col ${isToday ? 'border-foreground bg-secondary/50' : 'border-border'}`}>
               <span className={`text-xs ${isToday ? 'font-bold' : 'text-muted-foreground'}`}>{day}</span>
               <div className="mt-auto flex flex-wrap gap-0.5">
-                {dayTasks.slice(0, 3).map((t) => <span key={t.id} className={`w-1.5 h-1.5 rounded-full ${priorityMeta[t.priority].dot}`} />)}
+                {dt.slice(0, 3).map((t) => <span key={t.id} className={`w-1.5 h-1.5 rounded-full ${priorityMeta[t.priority].dot}`} />)}
               </div>
             </div>
           );
@@ -448,10 +568,10 @@ function CalendarView({ tasks }: { tasks: Task[] }) {
 
 function Analytics({ stats }: { stats: { total: number; done: number; pending: number; overdue: number; rate: number } }) {
   const cards = [
-    { label: 'Всего задач',  value: stats.total,   icon: 'ListChecks' },
-    { label: 'Выполнено',    value: stats.done,     icon: 'CheckCircle2' },
-    { label: 'В работе',     value: stats.pending,  icon: 'Clock' },
-    { label: 'Просрочено',   value: stats.overdue,  icon: 'AlertCircle' },
+    { label: 'Всего задач', value: stats.total,  icon: 'ListChecks' },
+    { label: 'Выполнено',   value: stats.done,    icon: 'CheckCircle2' },
+    { label: 'В работе',    value: stats.pending, icon: 'Clock' },
+    { label: 'Просрочено',  value: stats.overdue, icon: 'AlertCircle' },
   ];
   return (
     <div className="animate-fade-in space-y-6">
