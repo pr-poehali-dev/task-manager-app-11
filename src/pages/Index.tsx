@@ -51,6 +51,7 @@ export default function Index() {
   const [section, setSection] = useState<Section>('tasks');
   const [input, setInput] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
+  const [due, setDue] = useState(todayISO());
 
   const active = tasks.filter((t) => !t.archived);
 
@@ -68,10 +69,11 @@ export default function Index() {
     if (!input.trim()) return;
     setTasks((p) => [
       ...p,
-      { id: Date.now(), title: input.trim(), due: todayISO(), priority, done: false, archived: false },
+      { id: Date.now(), title: input.trim(), due: due || todayISO(), priority, done: false, archived: false },
     ]);
     setInput('');
     setPriority('medium');
+    setDue(todayISO());
   };
 
   const stats = useMemo(() => {
@@ -165,6 +167,12 @@ export default function Index() {
                 className="flex-1 px-4 py-3 rounded-xl border border-border bg-card text-sm outline-none focus:ring-2 focus:ring-ring/15 focus:border-foreground/30 transition"
               />
               <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={due}
+                  onChange={(e) => setDue(e.target.value)}
+                  className="px-3 h-11 rounded-xl border border-border bg-card text-sm text-muted-foreground outline-none focus:border-foreground/30 transition"
+                />
                 {(['low', 'medium', 'high'] as Priority[]).map((p) => (
                   <button
                     key={p}
@@ -179,9 +187,11 @@ export default function Index() {
                 ))}
                 <button
                   onClick={addTask}
-                  className="px-4 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition flex items-center gap-1.5"
+                  disabled={!input.trim()}
+                  className="px-5 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5"
                 >
                   <Icon name="Plus" size={16} />
+                  Добавить
                 </button>
               </div>
             </div>
