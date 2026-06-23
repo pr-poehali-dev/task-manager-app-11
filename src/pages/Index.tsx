@@ -158,43 +158,50 @@ export default function Index() {
         {/* TASKS */}
         {section === 'tasks' && (
           <div className="animate-fade-in">
-            <div className="flex flex-col sm:flex-row gap-2 mb-8">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addTask()}
-                placeholder="Новая задача…"
-                className="flex-1 px-4 py-3 rounded-xl border border-border bg-card text-sm outline-none focus:ring-2 focus:ring-ring/15 focus:border-foreground/30 transition"
-              />
+            <form
+              onSubmit={(e) => { e.preventDefault(); addTask(); }}
+              className="flex flex-col gap-2 mb-8"
+            >
               <div className="flex gap-2">
                 <input
-                  type="date"
-                  value={due}
-                  onChange={(e) => setDue(e.target.value)}
-                  className="px-3 h-11 rounded-xl border border-border bg-card text-sm text-muted-foreground outline-none focus:border-foreground/30 transition"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Введите название задачи…"
+                  className="flex-1 px-4 py-3 rounded-xl border border-border bg-card text-sm outline-none focus:ring-2 focus:ring-ring/15 focus:border-foreground/30 transition"
                 />
-                {(['low', 'medium', 'high'] as Priority[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPriority(p)}
-                    className={`w-10 h-11 rounded-xl border flex items-center justify-center transition ${
-                      priority === p ? 'border-foreground' : 'border-border'
-                    }`}
-                    title={priorityMeta[p].label}
-                  >
-                    <span className={`w-2.5 h-2.5 rounded-full ${priorityMeta[p].dot}`} />
-                  </button>
-                ))}
                 <button
-                  onClick={addTask}
+                  type="submit"
                   disabled={!input.trim()}
-                  className="px-5 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5"
+                  className="px-5 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 whitespace-nowrap"
                 >
                   <Icon name="Plus" size={16} />
                   Добавить
                 </button>
               </div>
-            </div>
+              <div className="flex gap-2 items-center">
+                <span className="text-xs text-muted-foreground">Срок:</span>
+                <input
+                  type="date"
+                  value={due}
+                  onChange={(e) => setDue(e.target.value)}
+                  className="px-3 h-9 rounded-lg border border-border bg-card text-sm text-foreground outline-none focus:border-foreground/30 transition"
+                />
+                <span className="text-xs text-muted-foreground ml-2">Приоритет:</span>
+                {(['low', 'medium', 'high'] as Priority[]).map((p) => (
+                  <button
+                    type="button"
+                    key={p}
+                    onClick={() => setPriority(p)}
+                    className={`flex items-center gap-1.5 px-3 h-9 rounded-lg border text-xs font-medium transition ${
+                      priority === p ? 'border-foreground bg-secondary' : 'border-border text-muted-foreground hover:border-foreground/30'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${priorityMeta[p].dot}`} />
+                    {priorityMeta[p].label}
+                  </button>
+                ))}
+              </div>
+            </form>
 
             <div className="space-y-2">
               {active.filter((t) => !t.done).length === 0 && (
