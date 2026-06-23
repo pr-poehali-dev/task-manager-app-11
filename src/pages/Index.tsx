@@ -332,14 +332,14 @@ export default function Index() {
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[480px] animate-scale-in">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-[#f0f0f0]">
-              <h2 className="text-[17px] font-semibold text-gray-900">Новая задача</h2>
+            <div className="flex items-center justify-between px-6 py-[18px] border-b border-[#ebebeb]">
+              <h2 className="text-[17px] font-semibold text-[#111]">Новая задача</h2>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition">
                 <Icon name="X" size={20} />
               </button>
             </div>
 
-            <div className="px-6 pt-5 pb-2 space-y-4 max-h-[75vh] overflow-y-auto">
+            <div className="px-6 max-h-[78vh] overflow-y-auto">
 
               {/* Title */}
               <input
@@ -347,7 +347,7 @@ export default function Index() {
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="Название задачи"
-                className="w-full text-[22px] font-normal text-gray-800 border-0 border-b border-gray-200 pb-3 outline-none placeholder:text-gray-300 bg-transparent"
+                className="w-full text-[24px] font-normal text-[#111] border-0 border-b border-[#e8e8e8] py-5 outline-none placeholder:text-[#ccc] bg-transparent"
               />
 
               {/* Note */}
@@ -356,20 +356,20 @@ export default function Index() {
                 onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
                 placeholder="Описание..."
                 rows={3}
-                className="w-full px-4 py-3 rounded-xl bg-[#f5f5f5] text-sm text-gray-700 outline-none resize-none placeholder:text-gray-400 border-0"
+                className="w-full mt-4 px-4 py-3 rounded-xl bg-[#f5f5f5] text-[14px] text-gray-700 outline-none resize-none placeholder:text-[#bbb] border-0"
               />
 
               {/* Priority + Status */}
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-2 gap-4 mt-5">
                 <div>
-                  <p className="text-[13px] text-gray-400 mb-2">Приоритет</p>
-                  <div className="flex flex-col gap-2">
+                  <p className="text-[12px] text-[#aaa] mb-[10px] font-normal">Приоритет</p>
+                  <div className="flex flex-col gap-[8px]">
                     {(['high', 'medium', 'low'] as Priority[]).map((p) => (
                       <button key={p} type="button" onClick={() => setForm((f) => ({ ...f, priority: p }))}
-                        className={`px-4 py-2 rounded-[10px] border text-[14px] text-left transition ${
+                        className={`px-4 py-[9px] rounded-[10px] border text-[14px] text-left transition ${
                           form.priority === p
                             ? `${priorityMeta[p].bg} ${priorityMeta[p].border} ${priorityMeta[p].text} font-medium`
-                            : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50'
+                            : 'border-[#e8e8e8] text-[#333] bg-white'
                         }`}>
                         {priorityMeta[p].label}
                       </button>
@@ -377,14 +377,14 @@ export default function Index() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-[13px] text-gray-400 mb-2">Статус</p>
-                  <div className="flex flex-col gap-2">
+                  <p className="text-[12px] text-[#aaa] mb-[10px] font-normal">Статус</p>
+                  <div className="flex flex-col gap-[8px]">
                     {(['todo', 'inprogress', 'done'] as Status[]).map((s) => (
                       <button key={s} type="button" onClick={() => setForm((f) => ({ ...f, status: s }))}
-                        className={`px-4 py-2 rounded-[10px] border text-[14px] text-left transition ${
+                        className={`px-4 py-[9px] rounded-[10px] border text-[14px] text-left transition ${
                           form.status === s
                             ? `${statusMeta[s].bg} ${statusMeta[s].border} ${statusMeta[s].text} font-medium`
-                            : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50'
+                            : 'border-[#e8e8e8] text-[#333] bg-white'
                         }`}>
                         {statusMeta[s].label}
                       </button>
@@ -394,34 +394,33 @@ export default function Index() {
               </div>
 
               {/* Срок + Уведомление */}
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-2 gap-4 mt-5">
                 <div>
-                  <p className="text-[13px] text-gray-400 mb-2">Срок</p>
+                  <p className="text-[12px] text-[#aaa] mb-[10px] font-normal">Срок</p>
                   <div className="flex flex-col gap-2">
                     <input
                       type="date"
                       value={form.due}
                       onChange={(e) => setForm((f) => ({ ...f, due: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-[10px] border border-gray-200 text-[14px] text-gray-700 outline-none bg-white"
+                      className="w-full px-3 py-[9px] rounded-[10px] border border-[#e8e8e8] text-[14px] text-[#333] outline-none bg-white"
                     />
                     <input
                       type="time"
                       value={form.dueTime}
                       onChange={(e) => setForm((f) => ({ ...f, dueTime: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-[10px] border border-gray-200 text-[14px] text-gray-700 outline-none bg-white"
+                      className="w-full px-3 py-[9px] rounded-[10px] border border-[#e8e8e8] text-[14px] text-[#333] outline-none bg-white"
                     />
                   </div>
                 </div>
                 <div>
-                  <p className="text-[13px] text-gray-400 mb-2">Уведомление</p>
+                  <p className="text-[12px] text-[#aaa] mb-[10px] font-normal">Уведомление</p>
                   <select
                     value={form.reminderOffset}
                     onChange={(e) => setForm((f) => ({ ...f, reminderOffset: e.target.value as ReminderOffset }))}
-                    className="w-full px-3 py-2 rounded-[10px] border border-gray-200 text-[14px] text-gray-700 outline-none bg-white appearance-none cursor-pointer"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+                    className="w-full px-3 py-[9px] rounded-[10px] border border-[#e8e8e8] text-[14px] text-[#333] outline-none bg-white cursor-pointer"
                   >
                     {REMINDER_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value} disabled={opt.value !== 'none' && !form.due}>
+                      <option key={opt.value} value={opt.value}>
                         {opt.label}
                       </option>
                     ))}
@@ -433,28 +432,28 @@ export default function Index() {
                     </p>
                   )}
                   {form.reminderOffset !== 'none' && !form.due && (
-                    <p className="mt-2 text-[11px] text-gray-400">Укажите срок задачи</p>
+                    <p className="mt-2 text-[11px] text-[#aaa]">Сначала укажите срок</p>
                   )}
                 </div>
               </div>
 
               {/* Tags */}
-              <div>
-                <p className="text-[13px] text-gray-400 mb-2">Теги</p>
+              <div className="mt-5 mb-2">
+                <p className="text-[12px] text-[#aaa] mb-[10px] font-normal">Теги</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <input
                     value={form.tagInput}
                     onChange={(e) => setForm((f) => ({ ...f, tagInput: e.target.value }))}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTagFromInput(); } }}
                     placeholder="Добавить тег..."
-                    className="px-3 py-1.5 rounded-[10px] border border-gray-200 text-[13px] text-gray-700 outline-none bg-white w-36 placeholder:text-gray-300"
+                    className="px-3 py-[7px] rounded-[10px] border border-[#e8e8e8] text-[13px] text-[#333] outline-none bg-white w-36 placeholder:text-[#ccc]"
                   />
                   {PRESET_TAGS.map((tag) => (
                     <button key={tag} type="button" onClick={() => togglePresetTag(tag)}
-                      className={`px-3 py-1.5 rounded-full text-[13px] border transition ${
+                      className={`px-3 py-[7px] rounded-full text-[13px] transition ${
                         form.tags.includes(tag)
-                          ? 'bg-gray-800 text-white border-gray-800'
-                          : 'bg-[#f0f0f0] border-[#f0f0f0] text-gray-600 hover:bg-gray-200'
+                          ? 'bg-[#333] text-white'
+                          : 'bg-[#efefef] text-[#555] hover:bg-[#e0e0e0]'
                       }`}>
                       {tag}
                     </button>
@@ -462,7 +461,7 @@ export default function Index() {
                   {form.tags.filter((t) => !PRESET_TAGS.includes(t)).map((tag) => (
                     <button key={tag} type="button"
                       onClick={() => setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }))}
-                      className="px-3 py-1.5 rounded-full text-[13px] bg-gray-800 text-white border border-gray-800 flex items-center gap-1">
+                      className="px-3 py-[7px] rounded-full text-[13px] bg-[#333] text-white flex items-center gap-1">
                       {tag} <Icon name="X" size={10} />
                     </button>
                   ))}
@@ -471,13 +470,13 @@ export default function Index() {
             </div>
 
             {/* Footer */}
-            <div className="flex gap-3 px-6 py-5">
+            <div className="flex gap-3 px-6 py-5 border-t border-[#ebebeb] mt-3">
               <button onClick={closeModal}
-                className="flex-1 py-3 rounded-[14px] border border-gray-200 text-[14px] text-gray-700 font-medium hover:bg-gray-50 transition">
+                className="flex-1 py-[13px] rounded-[14px] border border-[#e0e0e0] text-[14px] text-[#333] font-medium hover:bg-gray-50 transition">
                 Отмена
               </button>
               <button onClick={createTask} disabled={!form.title.trim()}
-                className="flex-1 py-3 rounded-[14px] bg-[#b8c5e8] text-white text-[14px] font-medium hover:bg-[#9aacd8] disabled:opacity-50 transition">
+                className="flex-1 py-[13px] rounded-[14px] bg-[#b8c5e8] text-white text-[14px] font-medium hover:bg-[#9aacd8] disabled:opacity-50 transition">
                 Создать
               </button>
             </div>
