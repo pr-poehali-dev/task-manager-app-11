@@ -328,17 +328,18 @@ export default function Index() {
       {/* MODAL */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-scale-in overflow-hidden">
+          <div className="absolute inset-0 bg-black/20" onClick={closeModal} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[480px] animate-scale-in">
 
-            <div className="flex items-center justify-between px-6 py-5 border-b border-border">
-              <h2 className="text-lg font-bold">Новая задача</h2>
-              <button onClick={closeModal} className="text-muted-foreground hover:text-foreground transition">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b border-[#f0f0f0]">
+              <h2 className="text-[17px] font-semibold text-gray-900">Новая задача</h2>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition">
                 <Icon name="X" size={20} />
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-5 max-h-[75vh] overflow-y-auto">
+            <div className="px-6 pt-5 pb-2 space-y-4 max-h-[75vh] overflow-y-auto">
 
               {/* Title */}
               <input
@@ -346,7 +347,7 @@ export default function Index() {
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="Название задачи"
-                className="w-full text-xl font-semibold border-0 border-b border-border pb-3 outline-none placeholder:text-muted-foreground/50 bg-transparent"
+                className="w-full text-[22px] font-normal text-gray-800 border-0 border-b border-gray-200 pb-3 outline-none placeholder:text-gray-300 bg-transparent"
               />
 
               {/* Note */}
@@ -355,20 +356,20 @@ export default function Index() {
                 onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
                 placeholder="Описание..."
                 rows={3}
-                className="w-full px-4 py-3 rounded-xl bg-secondary/50 text-sm outline-none resize-none placeholder:text-muted-foreground/60"
+                className="w-full px-4 py-3 rounded-xl bg-[#f5f5f5] text-sm text-gray-700 outline-none resize-none placeholder:text-gray-400 border-0"
               />
 
               {/* Priority + Status */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2 font-medium">Приоритет</p>
-                  <div className="flex flex-col gap-1.5">
+                  <p className="text-[13px] text-gray-400 mb-2">Приоритет</p>
+                  <div className="flex flex-col gap-2">
                     {(['high', 'medium', 'low'] as Priority[]).map((p) => (
                       <button key={p} type="button" onClick={() => setForm((f) => ({ ...f, priority: p }))}
-                        className={`px-4 py-2 rounded-xl border text-sm font-medium text-left transition ${
+                        className={`px-4 py-2 rounded-[10px] border text-[14px] text-left transition ${
                           form.priority === p
-                            ? `${priorityMeta[p].bg} ${priorityMeta[p].border} ${priorityMeta[p].text}`
-                            : 'border-border text-foreground hover:bg-secondary/50'
+                            ? `${priorityMeta[p].bg} ${priorityMeta[p].border} ${priorityMeta[p].text} font-medium`
+                            : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50'
                         }`}>
                         {priorityMeta[p].label}
                       </button>
@@ -376,14 +377,14 @@ export default function Index() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2 font-medium">Статус</p>
-                  <div className="flex flex-col gap-1.5">
+                  <p className="text-[13px] text-gray-400 mb-2">Статус</p>
+                  <div className="flex flex-col gap-2">
                     {(['todo', 'inprogress', 'done'] as Status[]).map((s) => (
                       <button key={s} type="button" onClick={() => setForm((f) => ({ ...f, status: s }))}
-                        className={`px-4 py-2 rounded-xl border text-sm font-medium text-left transition ${
+                        className={`px-4 py-2 rounded-[10px] border text-[14px] text-left transition ${
                           form.status === s
-                            ? `${statusMeta[s].bg} ${statusMeta[s].border} ${statusMeta[s].text}`
-                            : 'border-border text-foreground hover:bg-secondary/50'
+                            ? `${statusMeta[s].bg} ${statusMeta[s].border} ${statusMeta[s].text} font-medium`
+                            : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50'
                         }`}>
                         {statusMeta[s].label}
                       </button>
@@ -392,78 +393,68 @@ export default function Index() {
                 </div>
               </div>
 
-              {/* Срок (дата + время) */}
-              <div>
-                <p className="text-xs text-muted-foreground mb-2 font-medium">Срок</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    value={form.due}
-                    onChange={(e) => setForm((f) => ({ ...f, due: e.target.value }))}
-                    className="px-4 py-2.5 rounded-xl border border-border text-sm outline-none bg-white"
-                  />
-                  <input
-                    type="time"
-                    value={form.dueTime}
-                    onChange={(e) => setForm((f) => ({ ...f, dueTime: e.target.value }))}
-                    className="px-4 py-2.5 rounded-xl border border-border text-sm outline-none bg-white"
-                  />
+              {/* Срок + Уведомление */}
+              <div className="grid grid-cols-2 gap-5">
+                <div>
+                  <p className="text-[13px] text-gray-400 mb-2">Срок</p>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="date"
+                      value={form.due}
+                      onChange={(e) => setForm((f) => ({ ...f, due: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-[10px] border border-gray-200 text-[14px] text-gray-700 outline-none bg-white"
+                    />
+                    <input
+                      type="time"
+                      value={form.dueTime}
+                      onChange={(e) => setForm((f) => ({ ...f, dueTime: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-[10px] border border-gray-200 text-[14px] text-gray-700 outline-none bg-white"
+                    />
+                  </div>
                 </div>
-              </div>
-
-              {/* Уведомление */}
-              <div>
-                <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1.5">
-                  <Icon name="Bell" size={13} />
-                  Уведомление
-                </p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {REMINDER_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setForm((f) => ({ ...f, reminderOffset: opt.value }))}
-                      disabled={opt.value !== 'none' && !form.due}
-                      className={`px-3 py-2.5 rounded-xl border text-sm text-left transition ${
-                        form.reminderOffset === opt.value
-                          ? 'border-foreground bg-secondary text-foreground font-medium'
-                          : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 disabled:opacity-40 disabled:cursor-not-allowed'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                <div>
+                  <p className="text-[13px] text-gray-400 mb-2">Уведомление</p>
+                  <select
+                    value={form.reminderOffset}
+                    onChange={(e) => setForm((f) => ({ ...f, reminderOffset: e.target.value as ReminderOffset }))}
+                    className="w-full px-3 py-2 rounded-[10px] border border-gray-200 text-[14px] text-gray-700 outline-none bg-white appearance-none cursor-pointer"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+                  >
+                    {REMINDER_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value} disabled={opt.value !== 'none' && !form.due}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  {form.reminderOffset !== 'none' && form.due && (
+                    <p className="mt-2 text-[11px] text-amber-500 flex items-center gap-1">
+                      <Icon name="Clock" size={11} />
+                      {fmtDateTime(calcReminderAt(form.due, form.dueTime, form.reminderOffset)!)}
+                    </p>
+                  )}
+                  {form.reminderOffset !== 'none' && !form.due && (
+                    <p className="mt-2 text-[11px] text-gray-400">Укажите срок задачи</p>
+                  )}
                 </div>
-                {form.reminderOffset !== 'none' && form.due && (
-                  <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
-                    <Icon name="Clock" size={12} />
-                    Уведомление: {fmtDateTime(calcReminderAt(form.due, form.dueTime, form.reminderOffset)!)}
-                  </p>
-                )}
-                {form.reminderOffset !== 'none' && !form.due && (
-                  <p className="mt-2 text-xs text-muted-foreground">Сначала укажите срок задачи</p>
-                )}
               </div>
 
               {/* Tags */}
               <div>
-                <p className="text-xs text-muted-foreground mb-2 font-medium">Теги</p>
-                <div className="flex gap-2 mb-2">
+                <p className="text-[13px] text-gray-400 mb-2">Теги</p>
+                <div className="flex items-center gap-2 flex-wrap">
                   <input
                     value={form.tagInput}
                     onChange={(e) => setForm((f) => ({ ...f, tagInput: e.target.value }))}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTagFromInput(); } }}
                     placeholder="Добавить тег..."
-                    className="px-3 py-1.5 rounded-lg border border-border text-sm outline-none bg-white flex-1"
+                    className="px-3 py-1.5 rounded-[10px] border border-gray-200 text-[13px] text-gray-700 outline-none bg-white w-36 placeholder:text-gray-300"
                   />
-                </div>
-                <div className="flex flex-wrap gap-2">
                   {PRESET_TAGS.map((tag) => (
                     <button key={tag} type="button" onClick={() => togglePresetTag(tag)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                      className={`px-3 py-1.5 rounded-full text-[13px] border transition ${
                         form.tags.includes(tag)
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-secondary border-border text-muted-foreground hover:text-foreground'
+                          ? 'bg-gray-800 text-white border-gray-800'
+                          : 'bg-[#f0f0f0] border-[#f0f0f0] text-gray-600 hover:bg-gray-200'
                       }`}>
                       {tag}
                     </button>
@@ -471,7 +462,7 @@ export default function Index() {
                   {form.tags.filter((t) => !PRESET_TAGS.includes(t)).map((tag) => (
                     <button key={tag} type="button"
                       onClick={() => setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }))}
-                      className="px-3 py-1 rounded-full text-xs font-medium border bg-primary text-primary-foreground border-primary flex items-center gap-1">
+                      className="px-3 py-1.5 rounded-full text-[13px] bg-gray-800 text-white border border-gray-800 flex items-center gap-1">
                       {tag} <Icon name="X" size={10} />
                     </button>
                   ))}
@@ -479,13 +470,14 @@ export default function Index() {
               </div>
             </div>
 
-            <div className="flex gap-3 px-6 py-4 border-t border-border">
+            {/* Footer */}
+            <div className="flex gap-3 px-6 py-5">
               <button onClick={closeModal}
-                className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-secondary/50 transition">
+                className="flex-1 py-3 rounded-[14px] border border-gray-200 text-[14px] text-gray-700 font-medium hover:bg-gray-50 transition">
                 Отмена
               </button>
               <button onClick={createTask} disabled={!form.title.trim()}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40 transition">
+                className="flex-1 py-3 rounded-[14px] bg-[#b8c5e8] text-white text-[14px] font-medium hover:bg-[#9aacd8] disabled:opacity-50 transition">
                 Создать
               </button>
             </div>
